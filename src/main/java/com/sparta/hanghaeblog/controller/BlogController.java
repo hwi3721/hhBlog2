@@ -23,8 +23,7 @@ public class BlogController {
     }
 
     @PostMapping("/api/blogs")
-    public BlogResponseDto createBlog(@RequestBody BlogRequestDto requestDto,
-                                      HttpServletRequest request) {
+    public BlogResponseDto createBlog(@RequestBody BlogRequestDto requestDto, HttpServletRequest request) {
         return blogService.createBlog(requestDto, request);
     }
 
@@ -39,9 +38,7 @@ public class BlogController {
     }
 
     @PatchMapping("/api/blogs/{id}")
-    public BlogResponseDto updateBlog(@PathVariable Long id,
-                                      @RequestBody BlogRequestDto requestDto,
-                                      HttpServletRequest request) {
+    public BlogResponseDto updateBlog(@PathVariable Long id, @RequestBody BlogRequestDto requestDto, HttpServletRequest request) {
         return blogService.update(id, requestDto, request);
     }
 
