@@ -3,14 +3,21 @@ package com.sparta.hanghaeblog.controller;
 
 import com.sparta.hanghaeblog.dto.BlogRequestDto;
 import com.sparta.hanghaeblog.dto.BlogResponseDto;
+import com.sparta.hanghaeblog.dto.OkMessage;
+import com.sparta.hanghaeblog.security.UserDetailsImpl;
 import com.sparta.hanghaeblog.service.BlogService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
+import static org.springframework.http.HttpStatus.OK;
+
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 public class BlogController {
@@ -23,8 +30,9 @@ public class BlogController {
     }
 
     @PostMapping("/api/blogs")
-    public BlogResponseDto createBlog(@RequestBody BlogRequestDto requestDto, HttpServletRequest request) {
-        return blogService.createBlog(requestDto, request);
+    public ResponseEntity<Object> createBlog(@RequestBody BlogRequestDto requestDto,
+                                             @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return new ResponseEntity<>(blogService.createBlog(requestDto, userDetails.getUser()), OK);
     }
 
     @GetMapping("/api/blogs")
@@ -38,13 +46,20 @@ public class BlogController {
     }
 
     @PatchMapping("/api/blogs/{id}")
-    public BlogResponseDto updateBlog(@PathVariable Long id, @RequestBody BlogRequestDto requestDto, HttpServletRequest request) {
-        return blogService.update(id, requestDto, request);
+    public ResponseEntity<Object> updateBlog(@PathVariable Long id,
+                                             @RequestBody BlogRequestDto requestDto,
+                                             @AuthenticationPrincipal UserDetailsImpl userDetails) throws IllegalAccessException {
+        OkMessage message = blogService.update(id, requestDto, userDetails.getUser());
+        return new ResponseEntity<>(message, message.getStatus());
     }
 
+
     @DeleteMapping("/api/blogs/{id}")
-    public String deleteBlog(@PathVariable Long id, HttpServletRequest request) {
-        return blogService.deleteBlog(id, request);
+    public ResponseEntity<Object> deleteBlog(@PathVariable Long id,
+                             @AuthenticationPrincipal UserDetailsImpl userDetails)
+            throws IllegalAccessException {
+        OkMessage okMessage = blogService.delete(id, userDetails.getUser());
+        return new ResponseEntity<>(okMessage, OK);
 
     }
 }
