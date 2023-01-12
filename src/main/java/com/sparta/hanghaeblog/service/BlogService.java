@@ -3,19 +3,19 @@ package com.sparta.hanghaeblog.service;
 
 import com.sparta.hanghaeblog.dto.BlogRequestDto;
 import com.sparta.hanghaeblog.dto.BlogResponseDto;
+import com.sparta.hanghaeblog.dto.OkMessage;
 import com.sparta.hanghaeblog.entity.Blog;
 import com.sparta.hanghaeblog.entity.User;
-import com.sparta.hanghaeblog.jwt.JwtUtil;
+import com.sparta.hanghaeblog.entity.UserRoleEnum;
 import com.sparta.hanghaeblog.repository.BlogRepository;
-import com.sparta.hanghaeblog.repository.UserRepository;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.springframework.http.HttpStatus.OK;
 
 
 @Service
@@ -23,40 +23,16 @@ import java.util.List;
 public class BlogService {
 
     private final BlogRepository blogRepository;
-    private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
+    private final static String ILLEGAL_ACCESS_MESSAGE = "작성자 혹은 관리자만 삭제/수정할 수 있습니다.";
+
 
     //    @Transactional
-    public BlogResponseDto createBlog(BlogRequestDto requestDto, HttpServletRequest request) {
-        // Request에서 Token 가져오기
-        String token = jwtUtil.resolveToken(request);
-        Claims claims;
+    public BlogResponseDto createBlog(BlogRequestDto requestDto, User user) {
+        Blog blog = new Blog(requestDto, user);
+        Blog target = blogRepository.save(blog);
 
-        // 토큰이 있는 경우에만 동작할거야
-        if (token != null) {
-            if (jwtUtil.validateToken(token)) {
-                // 토큰에서 사용자 정보 가져오기
-                claims = jwtUtil.getUserInfoFromToken(token);
-            } else {
-                throw new IllegalArgumentException("Token Error");
-            }
-
-            // 토큰에서 가져온 사용자 정보를 사용하여 DB 조회
-            User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-                    () -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-            );
-            Blog blog = new Blog(requestDto, user);
-            blogRepository.save(blog);
-
-            return new BlogResponseDto(blog);
-        }
-        return null;
+        return new BlogResponseDto(target);
     }
-
-//    @Transactional(readOnly = true)
-//    public List<Memo> getMemos() {
-//        return memoRepository.findAllByOrderByCreatedAtDesc();
-//    }
 
     //    @Transactional(readOnly = true)
     public List<BlogResponseDto> getBlogs() {
@@ -103,55 +79,29 @@ public class BlogService {
     }
 
     @Transactional
-    public BlogResponseDto update(Long id, BlogRequestDto requestDto, HttpServletRequest request) {
-        String token = jwtUtil.resolveToken(request);
-        Claims claims;
-        Blog blog = blogRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("아이디가 존재하지 않습니다.")
-        );
-        // 토큰이 있는 경우에만 동작할거야
-        if (token != null) {
-            if (jwtUtil.validateToken(token)) {
-                // 토큰에서 사용자 정보 가져오기
-                claims = jwtUtil.getUserInfoFromToken(token);
-            } else {
-                throw new IllegalArgumentException("Token Error");
-            }
+    public OkMessage update(Long id,
+                            BlogRequestDto requestDto,
+                            User user
+    ) throws IllegalAccessException {
+        Blog blog = blogRepository.findById(id).orElseThrow();
 
-            // 토큰에서 가져온 사용자 정보를 사용하여 DB 조회
-//            User user = userRepository.findByUsername(claims.getSubject()).orElseThrow(
-//                    () -> new IllegalArgumentException("사용자가 존재하지 않습니다.")
-//            );
-            if(!jwtUtil.getUserInfoFromToken(token).getSubject().equals(blog.getUsername())) {
-                throw new IllegalArgumentException("게시물 작성자가 아닙니다.");
-            }
-        }blog.update(requestDto);
-
-        return new BlogResponseDto(blog);
+        if (blog.getId().equals(user.getId()) || user.getRole().equals(UserRoleEnum.ADMIN)) {
+            blog.update(requestDto);
+            return new OkMessage(OK, "수정되었습니다.", new BlogResponseDto(blog));
+        }
+        throw new IllegalAccessException(ILLEGAL_ACCESS_MESSAGE);
     }
 
     @Transactional
-    public String deleteBlog(Long id, HttpServletRequest request) {
-        String token = jwtUtil.resolveToken(request);
-        Claims claims;
-        Blog blog = blogRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("아이디가 존재하지 않습니다.")
-        );
+    public OkMessage delete(Long id,
+                            User user
+    ) throws IllegalAccessException {
+        Blog blog = blogRepository.findById(id).orElseThrow();
 
-        if (token != null) {
-            if (jwtUtil.validateToken(token)) {
-                // 토큰에서 사용자 정보 가져오기
-                claims = jwtUtil.getUserInfoFromToken(token);
-            } else {
-                throw new IllegalArgumentException("Token Error");
-            }
-
-            // 토큰에서 가져온 사용자 정보를 사용하여 DB 조회
-            if(!jwtUtil.getUserInfoFromToken(token).getSubject().equals(blog.getUsername())) {
-                throw new IllegalArgumentException("게시물 작성자가 아닙니다.");
-            }
+        if (blog.getId().equals(user.getId()) || user.getRole().equals(UserRoleEnum.ADMIN)) {
+            blog.softDelete(true);
+            return new OkMessage(OK, "삭제되었습니다.", new BlogResponseDto(blog));
         }
-        blog.softDelete(true);
-        return "삭제되었습니다.";
+        throw new IllegalAccessException(ILLEGAL_ACCESS_MESSAGE);
     }
 }
