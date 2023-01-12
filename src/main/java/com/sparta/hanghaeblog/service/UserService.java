@@ -7,15 +7,15 @@ import com.sparta.hanghaeblog.entity.UserRoleEnum;
 import com.sparta.hanghaeblog.jwt.JwtUtil;
 import com.sparta.hanghaeblog.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.transaction.Transactional;
-import java.util.Optional;
 
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,13 +27,11 @@ public class UserService {
 
 
     @Transactional
-    public String signup(JoinRequestDto joinRequestDto) {
+    public void signup(JoinRequestDto joinRequestDto) {
         String username = joinRequestDto.getUsername();
         String password = passwordEncoder.encode(joinRequestDto.getPassword());
 
-
-        Optional<User> found = userRepository.findByUsername(username);
-        if (found.isPresent()) {
+        if (userRepository.findByUsername(username).isPresent()){
             throw new IllegalArgumentException("username이 중복됩니다.");
         }
 
@@ -47,7 +45,6 @@ public class UserService {
 
         User user = new User(username, password, role);
         userRepository.save(user);
-        return "redirect:/api/user/login";
     }
 
     public void login(LoginRequestDto loginRequestDto, HttpServletResponse response) {
@@ -59,10 +56,11 @@ public class UserService {
                 ()-> new IllegalArgumentException("등록된 사용자가 없습니다.")
         );
         // 비밀번호 확인
-        if (!user.getPassword().equals(password)) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        response.addHeader(JwtUtil.AUTHORIZATION_HEADER, jwtUtil.createToken(user.getUsername()));
+        response.addHeader(JwtUtil.AUTHORIZATION_HEADER,
+                jwtUtil.createToken(user.getUsername(),user.getRole()));
     }
 }

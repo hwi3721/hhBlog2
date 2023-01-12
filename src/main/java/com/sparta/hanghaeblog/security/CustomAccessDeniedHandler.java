@@ -19,7 +19,8 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
             new SecurityExceptionDto(HttpStatus.FORBIDDEN.value(), HttpStatus.FORBIDDEN.getReasonPhrase());
 
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response,
+    public void handle(HttpServletRequest request,
+                       HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException{
 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
